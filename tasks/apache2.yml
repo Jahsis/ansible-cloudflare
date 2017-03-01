@@ -1,0 +1,65 @@
+---
+##
+# Cloudflare Apache
+##
+- name: "Register if module already loaded"
+  shell: "/usr/sbin/apache2ctl -M | grep cloudflare"
+  register: mod_cloudflare
+  failed_when: false
+  changed_when: false
+  tags:
+    - cloudflare
+
+- name: "Register if module is already compiled and available"
+  shell: "ls /etc/apache2/mods-available | grep cloudflare"
+  register: is_mod_cloudflare_available
+  failed_when: false
+  changed_when: false
+  tags:
+    - cloudflare
+
+- name: "Be sure package for compile and enabled mod are installed"
+  apt: name={{item}} state=present update_cache=yes cache_valid_time=3600
+  become: yes
+  with_items:
+    - libtool
+    - apache2-dev
+  when: mod_cloudflare|failed and is_mod_cloudflare_available|failed
+  tags:
+    - cloudflare
+
+- name: "Clone source code from github cloudflare organization"
+  git:
+    repo: https://github.com/cloudflare/mod_cloudflare.git
+    dest: /tmp/mod_cloudflare
+  when: mod_cloudflare|failed and is_mod_cloudflare_available|failed
+  tags:
+    - cloudflare
+
+- name: "Create apache mod"
+  shell: "apxs -a -i -c mod_cloudflare.c"
+  become: yes
+  args:
+    chdir: /tmp/mod_cloudflare
+  when: mod_cloudflare|failed and is_mod_cloudflare_available|failed
+  notify: reload server
+  tags:
+    - cloudflare
+
+- name: "Enable apache mod if already available"
+  apache2_module:
+    state: present
+    name: cloudflare
+  notify: reload server
+  when: is_mod_cloudflare_available and mod_cloudflare|failed
+  tags:
+    - cloudflare
+
+- name: "Clean folders"
+  file:
+    path: /tmp/mod_cloudflare
+    state: absent
+  when: mod_cloudflare|failed and is_mod_cloudflare_available|failed
+  tags:
+    - cloudflare
+

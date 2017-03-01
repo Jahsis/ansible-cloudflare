@@ -1,0 +1,8 @@
+---
+# handlers file for ansible-cloudflare
+- name: reload server
+  service:
+    name: "{{ ansible_cloudflare_server }}"
+    state: reloaded
+  become: yes
+

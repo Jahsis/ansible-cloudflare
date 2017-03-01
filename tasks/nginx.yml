@@ -1,0 +1,19 @@
+---
+##
+# Cloudflare NGINX
+##
+- name: "Get IP's from cloudflare to configure nginx"
+  uri:
+    url: "https://api.cloudflare.com/client/v4/ips"
+  register: cf_ip
+  tags:
+    - cloudflare
+
+- name: "Templating configuration with cloudflare IP"
+  template:
+    src=real_ip.conf.j2
+    dest=/etc/nginx/conf.d/real_ip.conf
+  notify: reload server
+  tags:
+    - cloudflare
+
