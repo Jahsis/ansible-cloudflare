@@ -16,4 +16,3 @@
   notify: reload server
   tags:
     - cloudflare
-
