@@ -46,6 +46,16 @@
   tags:
     - cloudflare
 
+- name: "Configure apache mod"
+  template:
+    src=cloudflare.conf.j2
+    dest=/etc/apache2/mods-available/cloudflare.conf
+  become: yes
+  notify: reload server
+  when: ansible_cloudflare_additional_trusted_ips
+  tags:
+    - cloudflare
+
 - name: "Enable apache mod if already available"
   apache2_module:
     state: present
@@ -62,4 +72,3 @@
   when: mod_cloudflare|failed and is_mod_cloudflare_available|failed
   tags:
     - cloudflare
-
