@@ -1,30 +1,38 @@
 ---
-##
-# Cloudflare Apache
-##
-- name: "Register if module already loaded"
+- name: "Register if module is already loaded"
   shell: "/usr/sbin/apache2ctl -M | grep cloudflare"
   register: mod_cloudflare
-  failed_when: false
+  failed_when: mod_cloudflare.rc > 1
   changed_when: false
   tags:
     - cloudflare
 
-- name: "Register if module is already compiled and available"
+- name: "Register if module is already available"
   shell: "ls /etc/apache2/mods-available | grep cloudflare"
   register: is_mod_cloudflare_available
-  failed_when: false
+  failed_when: mod_cloudflare.rc > 1
   changed_when: false
   tags:
     - cloudflare
 
-- name: "Be sure package for compile and enabled mod are installed"
-  apt: name={{item}} state=present update_cache=yes cache_valid_time=3600
-  become: yes
-  with_items:
-    - libtool
-    - apache2-dev
-  when: mod_cloudflare|failed and is_mod_cloudflare_available|failed
+- name: "Register if module configuration is already installed"
+  shell: "ls /etc/apache2/conf-enabled | grep cloudflare.conf"
+  register: is_mod_cloudflare_conf_enabled
+  failed_when: is_mod_cloudflare_conf_enabled.rc > 1
+  changed_when: false
+  tags:
+    - cloudflare
+
+- name: "Ensure dependencies are installed"
+  apt:
+    name:
+      - libtool
+      - apache2-dev
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+  when: (mod_cloudflare.rc == 1) and (is_mod_cloudflare_available.rc == 1)
   tags:
     - cloudflare
 
@@ -32,36 +40,34 @@
   git:
     repo: https://github.com/cloudflare/mod_cloudflare.git
     dest: /tmp/mod_cloudflare
-  when: mod_cloudflare|failed and is_mod_cloudflare_available|failed
+  when: (mod_cloudflare.rc == 1) and (is_mod_cloudflare_available.rc == 1)
   tags:
     - cloudflare
 
-- name: "Create apache mod"
+- name: "Create cloudflare module"
   shell: "apxs -a -i -c mod_cloudflare.c"
-  become: yes
+  become: true
   args:
     chdir: /tmp/mod_cloudflare
-  when: mod_cloudflare|failed and is_mod_cloudflare_available|failed
+  when: (mod_cloudflare.rc == 1) and (is_mod_cloudflare_available.rc == 1)
   notify: reload server
   tags:
     - cloudflare
 
-- name: "Configure apache mod"
+- name: "Install cloudflare module configuration"
   template:
-    src=cloudflare.conf.j2
-    dest=/etc/apache2/mods-available/cloudflare.conf
-  become: yes
+    src: cloudflare.conf.j2
+    dest: /etc/apache2/conf-available/cloudflare.conf
+  become: true
   notify: reload server
-  when: ansible_cloudflare_additional_trusted_ips
+  when: ansible_cloudflare_additional_trusted_ips|length > 0
   tags:
     - cloudflare
 
-- name: "Enable apache mod if already available"
-  apache2_module:
-    state: present
-    name: cloudflare
+- name: "Enable cloudflare module configuration"
+  command: "a2enconf cloudflare"
   notify: reload server
-  when: is_mod_cloudflare_available and mod_cloudflare|failed
+  when: (ansible_cloudflare_additional_trusted_ips|length > 0) and (is_mod_cloudflare_conf_enabled.rc == 1)
   tags:
     - cloudflare
 
@@ -69,6 +75,6 @@
   file:
     path: /tmp/mod_cloudflare
     state: absent
-  when: mod_cloudflare|failed and is_mod_cloudflare_available|failed
+  when: (mod_cloudflare.rc == 1) and (is_mod_cloudflare_available.rc == 1)
   tags:
     - cloudflare

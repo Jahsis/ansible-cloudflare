@@ -1,4 +1,3 @@
 ---
-# defaults file for ansible-cloudflare
 ansible_cloudflare_server: ""
 ansible_cloudflare_additional_trusted_ips: []

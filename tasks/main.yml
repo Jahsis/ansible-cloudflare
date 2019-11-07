@@ -1,5 +1,4 @@
 ---
-# tasks files for ansible-cloudflare
 - include: apache2.yml
   when: ansible_cloudflare_server == "apache2"
   tags:
