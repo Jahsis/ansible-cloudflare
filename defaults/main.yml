@@ -1,3 +1,4 @@
 ---
-ansible_cloudflare_server: ""
 ansible_cloudflare_additional_trusted_ips: []
+ansible_cloudflare_ip_header: "CF-Connecting-IP"
+ansible_cloudflare_server: ""
