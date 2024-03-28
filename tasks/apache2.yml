@@ -1,6 +1,6 @@
 ---
 - name: "Register if module is already loaded"
-  shell: "/usr/sbin/apache2ctl -M | grep cloudflare"
+  ansible.builtin.shell: "/usr/sbin/apache2ctl -M | grep cloudflare"
   register: mod_cloudflare
   failed_when: mod_cloudflare.rc > 1
   changed_when: false
@@ -8,7 +8,7 @@
     - cloudflare
 
 - name: "Register if module is already available"
-  shell: "ls /etc/apache2/mods-available | grep cloudflare"
+  ansible.builtin.shell: "ls /etc/apache2/mods-available | grep cloudflare"
   register: is_mod_cloudflare_available
   failed_when: mod_cloudflare.rc > 1
   changed_when: false
@@ -16,7 +16,7 @@
     - cloudflare
 
 - name: "Register if module configuration is already installed"
-  shell: "ls /etc/apache2/conf-enabled | grep cloudflare.conf"
+  ansible.builtin.shell: "ls /etc/apache2/conf-enabled | grep cloudflare.conf"
   register: is_mod_cloudflare_conf_enabled
   failed_when: is_mod_cloudflare_conf_enabled.rc > 1
   changed_when: false
@@ -24,7 +24,7 @@
     - cloudflare
 
 - name: "Ensure dependencies are installed"
-  apt:
+  ansible.builtin.apt:
     name:
       - libtool
       - apache2-dev
@@ -37,7 +37,7 @@
     - cloudflare
 
 - name: "Clone source code from github cloudflare organization"
-  git:
+  ansible.builtin.git:
     repo: https://github.com/cloudflare/mod_cloudflare.git
     dest: /tmp/mod_cloudflare
   when: (mod_cloudflare.rc == 1) and (is_mod_cloudflare_available.rc == 1)
@@ -45,7 +45,7 @@
     - cloudflare
 
 - name: "Create cloudflare module"
-  shell: "apxs -a -i -c mod_cloudflare.c"
+  ansible.builtin.shell: "apxs -a -i -c mod_cloudflare.c"
   become: true
   args:
     chdir: /tmp/mod_cloudflare
@@ -55,7 +55,7 @@
     - cloudflare
 
 - name: "Install cloudflare module configuration"
-  template:
+  ansible.builtin.template:
     src: cloudflare.conf.j2
     dest: /etc/apache2/conf-available/cloudflare.conf
   become: true
@@ -65,14 +65,14 @@
     - cloudflare
 
 - name: "Enable cloudflare module configuration"
-  command: "a2enconf cloudflare"
+  ansible.builtin.command: "a2enconf cloudflare"
   notify: reload server
   when: (ansible_cloudflare_additional_trusted_ips|length > 0) and (is_mod_cloudflare_conf_enabled.rc == 1)
   tags:
     - cloudflare
 
 - name: "Clean folders"
-  file:
+  ansible.builtin.file:
     path: /tmp/mod_cloudflare
     state: absent
   when: (mod_cloudflare.rc == 1) and (is_mod_cloudflare_available.rc == 1)
